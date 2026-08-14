@@ -615,7 +615,7 @@ if __name__ == '__main__':
         for index in range(3): total_loc[index] = '{:,}'.format(int(total_loc[index]))
 
     try:
-        svg_overwrite('dark_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc)
+        svg_overwrite('profile.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc)
     except Exception as e:
         print('Could not write SVG files:', e)
         raise
