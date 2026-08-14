@@ -40,32 +40,100 @@ def format_plural(unit):
     return 's' if unit != 1 else ''
 
 
-def graphql_request(query, variables, retries=5):
+def graphql_request(query, variables, retries=6):
     """
     POST to GitHub's GraphQL API, retrying with exponential backoff on
-    transient failures (rate limits, timeouts, 5xx errors).
+    transient failures. Handles every failure mode the API can throw:
+      - HTTP 429/5xx and connection errors (retry)
+      - HTTP 200 with 'errors' in the body (retry)
+      - secondary rate limits via the Retry-After header (wait it out)
+      - primary rate limit exhaustion, via X-RateLimit-Reset (sleep until
+        the hourly reset, so the run continues instead of crashing)
     Returns the response object on success, otherwise raises an Exception.
     """
+    last_error = 'unknown error'
     for attempt in range(1, retries + 1):
+        request = None
         try:
             request = requests.post('https://api.github.com/graphql',
                                     json={'query': query, 'variables': variables},
-                                    headers=HEADERS, timeout=90)
+                                    headers=HEADERS, timeout=120)
+        except requests.exceptions.RequestException as e:
+            last_error = 'connection error: ' + str(e)
+
+        ok = False
+        if request is not None:
             status = request.status_code
-        except requests.exceptions.RequestException:
-            request = None
-            status = 'connection error'
-        if request is not None and status == 200:
+            if status == 200:
+                try:
+                    body = request.json()
+                except ValueError:
+                    body = None
+                if body is None or 'errors' in body:
+                    last_error = 'GraphQL errors in response body'
+                    if body is not None and 'errors' in body:
+                        errs = [e.get('type', e.get('message', '?')) for e in body['errors']]
+                        last_error += ': ' + str(errs[:2])
+                        # Rate limit exhausted: sleep until the hourly reset,
+                        # then retry without burning a retry attempt.
+                        if any(str(e.get('type', '')).upper() == 'RATE_LIMITED' for e in body['errors']):
+                            reset = request.headers.get('X-RateLimit-Reset')
+                            if reset:
+                                try:
+                                    wait = max(5, int(reset) - int(time.time()) + 2)
+                                    print('GraphQL rate limit exhausted; sleeping ' + str(wait) + 's until reset')
+                                    time.sleep(wait)
+                                    continue
+                                except ValueError:
+                                    pass
+                else:
+                    ok = True
+            else:
+                last_error = 'HTTP ' + str(status)
+                # Primary rate limit exhausted: sleep until reset, then retry.
+                if status == 403 and request.headers.get('X-RateLimit-Remaining') == '0':
+                    reset = request.headers.get('X-RateLimit-Reset')
+                    if reset:
+                        try:
+                            wait = max(5, int(reset) - int(time.time()) + 2)
+                            print('Primary rate limit exhausted; sleeping ' + str(wait) + 's until reset')
+                            time.sleep(wait)
+                            continue
+                        except ValueError:
+                            pass
+        if ok:
+            _pace_requests(request)
             return request
+
         wait = 5 * (2 ** (attempt - 1))
         if request is not None and 'Retry-After' in request.headers:
             try:
                 wait = max(wait, int(request.headers['Retry-After']) + 2)
             except ValueError:
                 pass
-        print('GraphQL request failed (' + str(status) + '); retrying in ' + str(wait) + 's (attempt ' + str(attempt) + '/' + str(retries) + ')')
+        print('GraphQL request failed (' + last_error + '); retrying in ' + str(wait) + 's (attempt ' + str(attempt) + '/' + str(retries) + ')')
         time.sleep(wait)
-    raise Exception('GraphQL request failed after', retries, 'attempts with status', status)
+    raise Exception('GraphQL request failed after ' + str(retries) + ' attempts (' + last_error + ')')
+
+
+def _pace_requests(request):
+    """
+    After a successful request, pause briefly if the rate limit is nearly
+    exhausted so the tail of the run (stars, repos, followers) isn't cut off.
+    """
+    remaining = request.headers.get('X-RateLimit-Remaining')
+    reset = request.headers.get('X-RateLimit-Reset')
+    if remaining is None or reset is None:
+        return
+    try:
+        remaining = int(remaining)
+        reset = int(reset)
+    except ValueError:
+        return
+    if remaining < 10:
+        sleep_for = max(0, reset - int(time.time())) + 2
+        print('Rate limit low (' + str(remaining) + ' remaining); sleeping ' + str(sleep_for) + 's until reset')
+        time.sleep(sleep_for)
 
 
 def simple_request(func_name, query, variables):
@@ -181,11 +249,15 @@ def recursive_loc(owner, repo_name, data, cache_comment, addition_total=0, delet
 
 def loc_counter_one_repo(owner, repo_name, data, cache_comment, history, addition_total, deletion_total, my_commits):
     """
-    Recursively call recursive_loc (since GraphQL can only search 100 commits at a time) 
+    Recursively call recursive_loc (since GraphQL can only search 100 commits at a time)
     only adds the LOC value of commits authored by me
     """
     for node in history['edges']:
-        if node['node']['author']['user'] == OWNER_ID:
+        try:
+            author_user = node['node']['author']['user']
+        except (TypeError, KeyError):
+            author_user = None
+        if author_user == OWNER_ID:
             my_commits += 1
             addition_total += node['node']['additions']
             deletion_total += node['node']['deletions']
@@ -265,25 +337,45 @@ def cache_builder(edges, comment_size, force_cache, loc_add=0, loc_del=0):
     cache_comment = data[:comment_size] # save the comment block
     data = data[comment_size:] # remove those lines
     for index in range(len(edges)):
-        repo_hash, commit_count, *__ = data[index].split()
-        if repo_hash == hashlib.sha256(edges[index]['node']['nameWithOwner'].encode('utf-8')).hexdigest():
+        try:
+            parts = data[index].split()
+            repo_hash = parts[0]
+        except (IndexError, ValueError): # missing or malformed cache line
+            repo_hash = ''
+        expected = hashlib.sha256(edges[index]['node']['nameWithOwner'].encode('utf-8')).hexdigest()
+        if repo_hash != expected: # new repo or corrupt line: reset it to zero
+            repo_hash = expected
+            data[index] = repo_hash + ' 0 0 0 0\n'
+            commit_count = 0
+        else:
             try:
-                if int(commit_count) != edges[index]['node']['defaultBranchRef']['target']['history']['totalCount']:
-                    # if commit count has changed, update loc for that repo
-                    owner, repo_name = edges[index]['node']['nameWithOwner'].split('/')
-                    loc = recursive_loc(owner, repo_name, data, cache_comment)
-                    data[index] = repo_hash + ' ' + str(edges[index]['node']['defaultBranchRef']['target']['history']['totalCount']) + ' ' + str(loc[2]) + ' ' + str(loc[0]) + ' ' + str(loc[1]) + '\n'
-            except TypeError: # If the repo is empty
+                commit_count = int(parts[1])
+            except (IndexError, ValueError):
+                commit_count = 0
                 data[index] = repo_hash + ' 0 0 0 0\n'
-            except Exception as e: # One failing repo shouldn't abort the whole run
-                print('Skipping', edges[index]['node']['nameWithOwner'], 'for this run:', e)
+        try:
+            try:
+                total = edges[index]['node']['defaultBranchRef']['target']['history']['totalCount']
+            except TypeError: # empty repository
+                total = 0
+            if commit_count != total:
+                # if commit count has changed, update loc for that repo
+                owner, repo_name = edges[index]['node']['nameWithOwner'].split('/')
+                loc = recursive_loc(owner, repo_name, data, cache_comment)
+                data[index] = repo_hash + ' ' + str(total) + ' ' + str(loc[2]) + ' ' + str(loc[0]) + ' ' + str(loc[1]) + '\n'
+        except Exception as e: # One failing repo shouldn't abort the whole run
+            print('Skipping', edges[index]['node']['nameWithOwner'], 'for this run:', e)
     with open(filename, 'w') as f:
         f.writelines(cache_comment)
         f.writelines(data)
     for line in data:
-        loc = line.split()
-        loc_add += int(loc[3])
-        loc_del += int(loc[4])
+        try:
+            loc = line.split()
+            if len(loc) >= 5:
+                loc_add += int(loc[3])
+                loc_del += int(loc[4])
+        except ValueError:
+            continue
     return [loc_add, loc_del, loc_add - loc_del, cached]
 
 
@@ -326,18 +418,20 @@ def stars_counter(data):
 def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data):
     """
     Parse SVG files and update elements with my age, commits, stars, repositories, and lines written
+    Values that are None are left untouched (the SVG keeps its current text).
     """
     tree = etree.parse(filename)
     root = tree.getroot()
-    justify_format(root, 'age_data', age_data, 37)
-    justify_format(root, 'commit_data', commit_data, 12)
-    justify_format(root, 'star_data', star_data, 8)
-    justify_format(root, 'repo_data', repo_data, 4)
-    justify_format(root, 'contrib_data', contrib_data)
-    justify_format(root, 'follower_data', follower_data, 8)
-    justify_format(root, 'loc_data', loc_data[2], 9)
-    justify_format(root, 'loc_add', loc_data[0])
-    justify_format(root, 'loc_del', loc_data[1], 7)
+    if age_data is not None: justify_format(root, 'age_data', age_data, 37)
+    if commit_data is not None: justify_format(root, 'commit_data', commit_data, 12)
+    if star_data is not None: justify_format(root, 'star_data', star_data, 8)
+    if repo_data is not None: justify_format(root, 'repo_data', repo_data, 4)
+    if contrib_data is not None: justify_format(root, 'contrib_data', contrib_data)
+    if follower_data is not None: justify_format(root, 'follower_data', follower_data, 8)
+    if loc_data is not None:
+        if loc_data[2] != '-': justify_format(root, 'loc_data', loc_data[2], 9)
+        if loc_data[0] != '-': justify_format(root, 'loc_add', loc_data[0])
+        if loc_data[1] != '-': justify_format(root, 'loc_del', loc_data[1], 7)
     tree.write(filename, encoding='utf-8', xml_declaration=True)
 
 
@@ -378,7 +472,10 @@ def commit_counter(comment_size):
     cache_comment = data[:comment_size] # save the comment block
     data = data[comment_size:] # remove those lines
     for line in data:
-        total_commits += int(line.split()[2])
+        try:
+            total_commits += int(line.split()[2])
+        except (IndexError, ValueError):
+            continue
     return total_commits
 
 
@@ -448,32 +545,81 @@ def formatter(query_type, difference, funct_return=False, whitespace=0):
 if __name__ == '__main__':
     """
     Adapted from Andrew Grant's (Andrew6rant) original today.py for Vishwajit Sarnobat's profile README.
+    Each stat is computed independently: if one fails (rate limits, bad data, etc.), the run continues
+    and writes whatever it did manage to fetch, instead of crashing and updating nothing.
     """
     print('Calculation times:')
+
     # define global variable for owner ID and calculate user's creation date
     # e.g {'id': 'MDQ6VXNlcjU3MzMxMTM0'} and 2019-11-03T21:15:07Z for username 'Andrew6rant'
-    user_data, user_time = perf_counter(user_getter, USER_NAME)
-    OWNER_ID, acc_date = user_data
-    formatter('account data', user_time)
-    age_data, age_time = perf_counter(daily_readme, datetime.datetime.strptime(acc_date, '%Y-%m-%dT%H:%M:%SZ'))
-    formatter('age calculation', age_time)
-    total_loc, loc_time = perf_counter(loc_query, ['OWNER', 'COLLABORATOR', 'ORGANIZATION_MEMBER'], 7)
-    formatter('LOC (cached)', loc_time) if total_loc[-1] else formatter('LOC (no cache)', loc_time)
-    commit_data, commit_time = perf_counter(commit_counter, 7)
-    star_data, star_time = perf_counter(graph_repos_stars, 'stars', ['OWNER'])
-    repo_data, repo_time = perf_counter(graph_repos_stars, 'repos', ['OWNER'])
-    contrib_data, contrib_time = perf_counter(graph_repos_stars, 'repos', ['OWNER', 'COLLABORATOR', 'ORGANIZATION_MEMBER'])
-    follower_data, follower_time = perf_counter(follower_getter, USER_NAME)
+    OWNER_ID = None
+    acc_date = None
+    user_time = 0
+    try:
+        user_data, user_time = perf_counter(user_getter, USER_NAME)
+        OWNER_ID, acc_date = user_data
+        formatter('account data', user_time)
+    except Exception as e:
+        print('Could not fetch account data (continuing without it):', e)
 
-    for index in range(len(total_loc)-1): total_loc[index] = '{:,}'.format(total_loc[index]) # format added, deleted, and total LOC
+    age_data = None
+    age_time = 0
+    try:
+        # Coding since 2021 (the GitHub account itself was created later, in 2023)
+        age_data, age_time = perf_counter(daily_readme, datetime.datetime(2021, 1, 1))
+        formatter('age calculation', age_time)
+    except Exception as e:
+        print('Could not calculate age (continuing without it):', e)
 
-    svg_overwrite('dark_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1])
-    svg_overwrite('light_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1])
+    total_loc = ['-', '-', '-']
+    loc_time = 0
+    try:
+        total_loc_raw, loc_time = perf_counter(loc_query, ['OWNER', 'COLLABORATOR', 'ORGANIZATION_MEMBER'], 7)
+        if total_loc_raw is None:
+            raise Exception('loc_query returned no data')
+        total_loc = [str(v) for v in total_loc_raw[:3]]
+    except Exception as e:
+        print('LOC calculation failed (continuing with cached values):', e)
+    formatter('LOC (cached)', loc_time) if total_loc[-1] != '-' else formatter('LOC (no cache)', loc_time)
 
-    # move cursor to override 'Calculation times:' with 'Total function time:' and the total function time, then move cursor back
-    print('\033[F\033[F\033[F\033[F\033[F\033[F\033[F\033[F',
-        '{:<21}'.format('Total function time:'), '{:>11}'.format('%.4f' % (user_time + age_time + loc_time + commit_time + star_time + repo_time + contrib_time)),
-        ' s \033[E\033[E\033[E\033[E\033[E\033[E\033[E\033[E', sep='')
+    commit_data = None
+    commit_time = 0
+    try:
+        commit_data, commit_time = perf_counter(commit_counter, 7)
+    except Exception as e:
+        print('Could not count commits (continuing without it):', e)
+    formatter('commits', commit_time)
+
+    star_data = None
+    try:
+        star_data, star_time = perf_counter(graph_repos_stars, 'stars', ['OWNER'])
+    except Exception as e:
+        print('Could not fetch stars (continuing without it):', e)
+    repo_data = None
+    try:
+        repo_data, repo_time = perf_counter(graph_repos_stars, 'repos', ['OWNER'])
+    except Exception as e:
+        print('Could not fetch repos (continuing without it):', e)
+    contrib_data = None
+    try:
+        contrib_data, contrib_time = perf_counter(graph_repos_stars, 'repos', ['OWNER', 'COLLABORATOR', 'ORGANIZATION_MEMBER'])
+    except Exception as e:
+        print('Could not fetch contributions (continuing without it):', e)
+    follower_data = None
+    try:
+        follower_data, follower_time = perf_counter(follower_getter, USER_NAME)
+    except Exception as e:
+        print('Could not fetch followers (continuing without it):', e)
+
+    if total_loc != ['-', '-', '-']:
+        for index in range(3): total_loc[index] = '{:,}'.format(int(total_loc[index]))
+
+    try:
+        svg_overwrite('dark_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc)
+        svg_overwrite('light_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc)
+    except Exception as e:
+        print('Could not write SVG files:', e)
+        raise
 
     print('Total GitHub GraphQL API calls:', '{:>3}'.format(sum(QUERY_COUNT.values())))
     for funct_name, count in QUERY_COUNT.items(): print('{:<28}'.format('   ' + funct_name + ':'), '{:>6}'.format(count))
