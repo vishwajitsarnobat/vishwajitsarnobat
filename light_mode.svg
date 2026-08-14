@@ -40,40 +40,41 @@ text, tspan {white-space: pre;}
 <text x="15" y="118"><tspan x="15" y="118" class="prompt t" style="animation-delay:0.65s">vishwajit@github</tspan><tspan class="sep t" style="animation-delay:0.65s">:</tspan><tspan class="value t" style="animation-delay:0.65s">~</tspan><tspan class="sep t" style="animation-delay:0.65s">$ </tspan><tspan class="t" style="animation-delay:0.65s">neofetch</tspan></text>
 
 <!-- ASCII art portrait -->
-<text x="21" y="182" fill="#24292f" font-size="5.5px">
-<tspan x="21" y="182" class="t" style="animation-delay:0.90s">' '-'-.'+x=*x@x@'#@@</tspan>
-<tspan x="21" y="195" class="t" style="animation-delay:1.04s">                                 =:.@@@-:@*x=xx@@xx=**@@*@#=#@@x</tspan>
-<tspan x="21" y="208" class="t" style="animation-delay:1.18s">                              *=@'@@@@@#x=@@`         '  +x@@@;#@*</tspan>
-<tspan x="21" y="221" class="t" style="animation-delay:1.32s">                            @@@@@@@@@;%@@@@%             x=%#@%@@@%</tspan>
-<tspan x="21" y="234" class="t" style="animation-delay:1.46s">                            #@@-x@'-@@@@#@@x@x    +*. #@*@:`  ;+   *=</tspan>
-<tspan x="21" y="247" class="t" style="animation-delay:1.60s">                         #=@@@@x*@@@@@@@x=@'@+@:*@@@;@==@@==@@@@@`  #</tspan>
-<tspan x="21" y="260" class="t" style="animation-delay:1.74s">                       =+;@@%@@@%@@@:@@*`   :*=*@@*@@@@@`=#;#:@%@;@ #</tspan>
-<tspan x="21" y="273" class="t" style="animation-delay:1.88s">                        : -@@@-`@@@@@@'      : @x@@@@x-@+@@@@@@@''@@ @</tspan>
-<tspan x="21" y="286" class="t" style="animation-delay:2.02s">                        -  #@:  -;*=;`     .%@%`@@@@@@@@@:       -@@' .</tspan>
-<tspan x="21" y="299" class="t" style="animation-delay:2.16s">                        ;' :@x+x@=++= '++:@@@%=@-%@ @=.:@@@* ' +@@@#`'%</tspan>
-<tspan x="21" y="312" class="t" style="animation-delay:2.30s">                         * -@        #@+@@@@*@*@@;:@;@==== -@@#=;    @</tspan>
-<tspan x="21" y="325" class="t" style="animation-delay:2.44s">                         @          =@`+@@x%@'   @ '@.  '@=x#'x@    -</tspan>
-<tspan x="21" y="338" class="t" style="animation-delay:2.58s">                         @          x@  @@@@@@@@x@=  @*++*@@#@  @`   +</tspan>
-<tspan x="21" y="351" class="t" style="animation-delay:2.72s">                         %;     *=@@%*=*@@@@@@@=.    :**x@@@@=%;@   +</tspan>
-<tspan x="21" y="364" class="t" style="animation-delay:2.86s">                          @.   *#@'         .x:               .@@.  :</tspan>
-<tspan x="21" y="377" class="t" style="animation-delay:3.00s">                           @   `.@ =       @@@=*==*x=@**;       x@ *</tspan>
-<tspan x="21" y="390" class="t" style="animation-delay:3.14s">                            #. -#@`=#=+. :@@#`:@=:'=;   @    =@x=@=</tspan>
-<tspan x="21" y="403" class="t" style="animation-delay:3.28s">                             @ *-`@:%x@=:@@#:;x==@@`  `@@%+ `@:</tspan>
-<tspan x="21" y="416" class="t" style="animation-delay:3.42s">                              @x@=@-=`@@* -x@*@x@@+@@@@@@@-'@x@@ '</tspan>
-<tspan x="21" y="429" class="t" style="animation-delay:3.56s">                               * @@;:@+@@@=   `%@@=+*@@@@.=@=@@*:</tspan>
-<tspan x="21" y="442" class="t" style="animation-delay:3.70s">                                  *@  :@* =@     '==;.    @=@@:-</tspan>
-<tspan x="21" y="455" class="t" style="animation-delay:3.84s">                                   %    +@*@@`   '''.  '*@x+x =</tspan>
-<tspan x="21" y="468" class="t" style="animation-delay:3.98s">                                            .x=x=#-:=xx;.</tspan>
-<tspan x="21" y="481" class="t" style="animation-delay:4.12s">                                    `                         :</tspan>
-<tspan x="21" y="494" class="t" style="animation-delay:4.26s">                                    *`                        -</tspan>
-<tspan x="21" y="507" class="t" style="animation-delay:4.40s">                                  *@+x                         '*</tspan>
-<tspan x="21" y="520" class="t" style="animation-delay:4.54s">                                 @`@x*=                       %**=@@+@+</tspan>
-<tspan x="21" y="533" class="t" style="animation-delay:4.68s">                           -=;:-=: @@@@;%#x.                 %+    x#@@@-@%`=</tspan>
-<tspan x="21" y="546" class="t" style="animation-delay:4.82s">                     ::+@@@=@@     +x '@+ '@+               :@       `@@x@@-  -:++</tspan>
-<tspan x="21" y="559" class="t" style="animation-delay:4.96s">                *x@@@@* '@@x@@     x*   @:  =@.            `@            ..        ;:==</tspan>
-<tspan x="21" y="572" class="t" style="animation-delay:5.10s">          ++##%@@';.-@@*=+         @@`   @-  `@.          .@.                          .+++</tspan>
-<tspan x="21" y="585" class="t" style="animation-delay:5.24s">        @@. =@.   :@  ;@%          -*@`  .@' -@#        .*@':====+=+=+=x                    :+x</tspan>
+<text x="21" y="279" fill="#24292f" font-size="5.5px">
+<tspan x="21" y="279.0" class="t" style="animation-delay:0.90s">                                      ' '-'-.'+x=*x@x@'#@@</tspan>
+<tspan x="21" y="285.9" class="t" style="animation-delay:1.04s">                                 =:.@@@-:@*x=xx@@xx=**@@*@#=#@@x</tspan>
+<tspan x="21" y="292.8" class="t" style="animation-delay:1.18s">                              *=@'@@@@@#x=@@`         '  +x@@@;#@*</tspan>
+<tspan x="21" y="299.7" class="t" style="animation-delay:1.32s">                            @@@@@@@@@;%@@@@%             x=%#@%@@@%</tspan>
+<tspan x="21" y="306.6" class="t" style="animation-delay:1.46s">                            #@@-x@'-@@@@#@@x@x    +*. #@*@:`  ;+   *=</tspan>
+<tspan x="21" y="313.5" class="t" style="animation-delay:1.60s">                         #=@@@@x*@@@@@@@x=@'@+@:*@@@;@==@@==@@@@@`  #</tspan>
+<tspan x="21" y="320.4" class="t" style="animation-delay:1.74s">                       =+;@@%@@@%@@@:@@*`   :*=*@@*@@@@@`=#;#:@%@;@ #</tspan>
+<tspan x="21" y="327.3" class="t" style="animation-delay:1.88s">                        : -@@@-`@@@@@@'      : @x@@@@x-@+@@@@@@@''@@ @</tspan>
+<tspan x="21" y="334.2" class="t" style="animation-delay:2.02s">                        -  #@:  -;*=;`     .%@%`@@@@@@@@@:       -@@' .</tspan>
+<tspan x="21" y="341.1" class="t" style="animation-delay:2.16s">                        ;' :@x+x@=++= '++:@@@%=@-%@ @=.:@@@* ' +@@@#`'%</tspan>
+<tspan x="21" y="348.0" class="t" style="animation-delay:2.30s">                         * -@        #@+@@@@*@*@@;:@;@==== -@@#=;    @</tspan>
+<tspan x="21" y="354.9" class="t" style="animation-delay:2.44s">                         @          =@`+@@x%@'   @ '@.  '@=x#'x@    -</tspan>
+<tspan x="21" y="361.8" class="t" style="animation-delay:2.58s">                         @          x@  @@@@@@@@x@=  @*++*@@#@  @`   +</tspan>
+<tspan x="21" y="368.7" class="t" style="animation-delay:2.72s">                         %;     *=@@%*=*@@@@@@@=.    :**x@@@@=%;@   +</tspan>
+<tspan x="21" y="375.6" class="t" style="animation-delay:2.86s">                          @.   *#@'         .x:               .@@.  :</tspan>
+<tspan x="21" y="382.5" class="t" style="animation-delay:3.00s">                           @   `.@ =       @@@=*==*x=@**;       x@ *</tspan>
+<tspan x="21" y="389.4" class="t" style="animation-delay:3.14s">                            #. -#@`=#=+. :@@#`:@=:'=;   @    =@x=@=</tspan>
+<tspan x="21" y="396.3" class="t" style="animation-delay:3.28s">                             @ *-`@:%x@=:@@#:;x==@@`  `@@%+ `@:</tspan>
+<tspan x="21" y="403.2" class="t" style="animation-delay:3.42s">                              @x@=@-=`@@* -x@*@x@@+@@@@@@@-'@x@@ '</tspan>
+<tspan x="21" y="410.1" class="t" style="animation-delay:3.56s">                               * @@;:@+@@@=   `%@@=+*@@@@.=@=@@*:</tspan>
+<tspan x="21" y="417.0" class="t" style="animation-delay:3.70s">                                  *@  :@* =@     '==;.    @=@@:-</tspan>
+<tspan x="21" y="423.9" class="t" style="animation-delay:3.84s">                                   %    +@*@@`   '''.  '*@x+x =</tspan>
+<tspan x="21" y="430.8" class="t" style="animation-delay:3.98s">                                            .x=x=#-:=xx;.</tspan>
+<tspan x="21" y="437.7" class="t" style="animation-delay:4.12s">                                    `                         :</tspan>
+<tspan x="21" y="444.6" class="t" style="animation-delay:4.26s">                                    *`                        -</tspan>
+<tspan x="21" y="451.5" class="t" style="animation-delay:4.40s">                                  *@+x                         '*</tspan>
+<tspan x="21" y="458.4" class="t" style="animation-delay:4.54s">                                 @`@x*=                       %**=@@+@+</tspan>
+<tspan x="21" y="465.3" class="t" style="animation-delay:4.68s">                           -=;:-=: @@@@;%#x.                 %+    x#@@@-@%`=</tspan>
+<tspan x="21" y="472.2" class="t" style="animation-delay:4.82s">                     ::+@@@=@@     +x '@+ '@+               :@       `@@x@@-  -:++</tspan>
+<tspan x="21" y="479.1" class="t" style="animation-delay:4.96s">                *x@@@@* '@@x@@     x*   @:  =@.            `@            ..        ;:==</tspan>
+<tspan x="21" y="486.0" class="t" style="animation-delay:5.10s">          ++##%@@';.-@@*=+         @@`   @-  `@.          .@.                          .+++</tspan>
+<tspan x="21" y="492.9" class="t" style="animation-delay:5.24s">        @@. =@.   :@  ;@%          -*@`  .@' -@#        .*@':====+=+=+=x                    :+x</tspan>
 </text>
+
 
 
 <!-- neofetch output -->
