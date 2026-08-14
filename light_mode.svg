@@ -35,7 +35,7 @@ text, tspan {white-space: pre;}
 
 <!-- photo, in place of ascii art -->
 <clipPath id="photoClipL"><rect x="15" y="150" width="355" height="480" rx="10"/></clipPath>
-<image href="./face.jpg" x="15" y="150" width="355" height="480" clip-path="url(#photoClipL)" preserveAspectRatio="xMidYMid slice"/>
+<image href="https://raw.githubusercontent.com/vishwajitsarnobat/vishwajitsarnobat/main/face.jpg" x="15" y="150" width="355" height="480" clip-path="url(#photoClipL)" preserveAspectRatio="xMidYMid slice"/>
 <rect x="15" y="150" width="355" height="480" rx="10" fill="none" stroke="#d0d7de" stroke-width="1.5"/>
 
 <text x="390" y="150" fill="#24292f">
