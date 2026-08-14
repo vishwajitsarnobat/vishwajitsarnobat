@@ -40,14 +40,39 @@ def format_plural(unit):
     return 's' if unit != 1 else ''
 
 
+def graphql_request(query, variables, retries=5):
+    """
+    POST to GitHub's GraphQL API, retrying with exponential backoff on
+    transient failures (rate limits, timeouts, 5xx errors).
+    Returns the response object on success, otherwise raises an Exception.
+    """
+    for attempt in range(1, retries + 1):
+        try:
+            request = requests.post('https://api.github.com/graphql',
+                                    json={'query': query, 'variables': variables},
+                                    headers=HEADERS, timeout=90)
+            status = request.status_code
+        except requests.exceptions.RequestException:
+            request = None
+            status = 'connection error'
+        if request is not None and status == 200:
+            return request
+        wait = 5 * (2 ** (attempt - 1))
+        if request is not None and 'Retry-After' in request.headers:
+            try:
+                wait = max(wait, int(request.headers['Retry-After']) + 2)
+            except ValueError:
+                pass
+        print('GraphQL request failed (' + str(status) + '); retrying in ' + str(wait) + 's (attempt ' + str(attempt) + '/' + str(retries) + ')')
+        time.sleep(wait)
+    raise Exception('GraphQL request failed after', retries, 'attempts with status', status)
+
+
 def simple_request(func_name, query, variables):
     """
     Returns a request, or raises an Exception if the response does not succeed.
     """
-    request = requests.post('https://api.github.com/graphql', json={'query': query, 'variables':variables}, headers=HEADERS)
-    if request.status_code == 200:
-        return request
-    raise Exception(func_name, ' has failed with a', request.status_code, request.text, QUERY_COUNT)
+    return graphql_request(query, variables)
 
 
 def graph_commits(start_date, end_date):
@@ -144,15 +169,14 @@ def recursive_loc(owner, repo_name, data, cache_comment, addition_total=0, delet
         }
     }'''
     variables = {'repo_name': repo_name, 'owner': owner, 'cursor': cursor}
-    request = requests.post('https://api.github.com/graphql', json={'query': query, 'variables':variables}, headers=HEADERS) # I cannot use simple_request(), because I want to save the file before raising Exception
-    if request.status_code == 200:
-        if request.json()['data']['repository']['defaultBranchRef'] != None: # Only count commits if repo isn't empty
-            return loc_counter_one_repo(owner, repo_name, data, cache_comment, request.json()['data']['repository']['defaultBranchRef']['target']['history'], addition_total, deletion_total, my_commits)
-        else: return 0
-    force_close_file(data, cache_comment) # saves what is currently in the file before this program crashes
-    if request.status_code == 403:
-        raise Exception('Too many requests in a short amount of time!\nYou\'ve hit the non-documented anti-abuse limit!')
-    raise Exception('recursive_loc() has failed with a', request.status_code, request.text, QUERY_COUNT)
+    try:
+        request = graphql_request(query, variables) # retries rate limits, timeouts, and 5xx errors
+    except Exception:
+        force_close_file(data, cache_comment) # saves what is currently in the file before this program crashes
+        raise
+    if request.json()['data']['repository']['defaultBranchRef'] != None: # Only count commits if repo isn't empty
+        return loc_counter_one_repo(owner, repo_name, data, cache_comment, request.json()['data']['repository']['defaultBranchRef']['target']['history'], addition_total, deletion_total, my_commits)
+    return 0
 
 
 def loc_counter_one_repo(owner, repo_name, data, cache_comment, history, addition_total, deletion_total, my_commits):
@@ -251,6 +275,8 @@ def cache_builder(edges, comment_size, force_cache, loc_add=0, loc_del=0):
                     data[index] = repo_hash + ' ' + str(edges[index]['node']['defaultBranchRef']['target']['history']['totalCount']) + ' ' + str(loc[2]) + ' ' + str(loc[0]) + ' ' + str(loc[1]) + '\n'
             except TypeError: # If the repo is empty
                 data[index] = repo_hash + ' 0 0 0 0\n'
+            except Exception as e: # One failing repo shouldn't abort the whole run
+                print('Skipping', edges[index]['node']['nameWithOwner'], 'for this run:', e)
     with open(filename, 'w') as f:
         f.writelines(cache_comment)
         f.writelines(data)
