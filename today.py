@@ -5,7 +5,6 @@ import os
 from lxml import etree
 import time
 import hashlib
-import re
 
 # Fine-grained personal access token with All Repositories access:
 # Account permissions: read:Followers, read:Starring, read:Watching
@@ -436,36 +435,6 @@ def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib
     tree.write(filename, encoding='utf-8', xml_declaration=True)
 
 
-def readme_overwrite(age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data):
-    """
-    Update the 'GitHub Stats' table in README.md with freshly fetched values.
-    Values that are None (or '-') are left untouched so the previous number stays.
-    """
-    with open('README.md', encoding='utf-8') as f:
-        text = f.read()
-    values = [
-        ('Coding since', age_data),
-        ('Repos', repo_data),
-        ('Commits', commit_data),
-        ('Lines of Code', loc_data[2] if isinstance(loc_data, (list, tuple)) and len(loc_data) > 2 else None),
-        ('Stars', star_data),
-        ('Contributions', contrib_data),
-        ('Followers', follower_data),
-    ]
-    changed = False
-    for label, value in values:
-        if value is None or value == '-':
-            continue
-        display = '{:,}'.format(int(value)) if isinstance(value, int) else str(value)
-        pattern = re.compile(r'(\| ' + re.escape(label) + r' \|)([^\n]*?)(\|)')
-        if pattern.search(text):
-            text = pattern.sub(r'\1 ' + display + r' \3', text, count=1)
-            changed = True
-    if changed:
-        with open('README.md', 'w', encoding='utf-8') as f:
-            f.write(text)
-
-
 def justify_format(root, element_id, new_text, length=0):
     """
     Updates and formats the text of the element, and modifes the amount of dots in the previous element to justify the new text on the svg
@@ -646,9 +615,10 @@ if __name__ == '__main__':
         for index in range(3): total_loc[index] = '{:,}'.format(int(total_loc[index]))
 
     try:
-        readme_overwrite(age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc)
+        svg_overwrite('dark_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc)
+        svg_overwrite('light_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc)
     except Exception as e:
-        print('Could not write README.md:', e)
+        print('Could not write SVG files:', e)
         raise
 
     print('Total GitHub GraphQL API calls:', '{:>3}'.format(sum(QUERY_COUNT.values())))
