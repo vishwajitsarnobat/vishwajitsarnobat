@@ -17,8 +17,7 @@ QUERY_COUNT = {'user_getter': 0, 'follower_getter': 0, 'graph_repos_stars': 0, '
 
 def daily_readme(start_date):
     """
-    Returns the length of time since the given start_date (used here for
-    'time since GitHub account creation' instead of a birthday).
+    Returns the duration of coding experience since the given start_date.
     e.g. 'XX years, XX months, XX days'
     """
     diff = relativedelta.relativedelta(datetime.datetime.today(), start_date)
