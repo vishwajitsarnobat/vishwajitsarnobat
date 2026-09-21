@@ -37,7 +37,7 @@ text, tspan {white-space: pre;}
 <!-- top terminal commands -->
 <text x="15" y="64"><tspan x="15" y="64" class="prompt t" style="animation-delay:0.25s">vishwajit@github</tspan><tspan class="sep t" style="animation-delay:0.25s">:</tspan><tspan class="value t" style="animation-delay:0.25s">~</tspan><tspan class="sep t" style="animation-delay:0.25s">$ </tspan><tspan class="t" fill="#86efac" style="animation-delay:0.25s">whoami</tspan></text>
 <text x="15" y="86" class="out t" style="animation-delay:0.45s">Vishwajit Sarnobat - ISRO | NTRO | Barclays | CS @ SPIT</text>
-<text x="15" y="118"><tspan x="15" y="118" class="prompt t" style="animation-delay:0.65s">vishwajit@github</tspan><tspan class="sep t" style="animation-delay:0.65s">:</tspan><tspan class="value t" style="animation-delay:0.65s">~</tspan><tspan class="sep t" style="animation-delay:0.65s">$ </tspan><tspan class="t" fill="#86efac" style="animation-delay:0.65s">neofetch</tspan></text>
+<text x="15" y="118"><tspan x="15" y="118" class="prompt t" style="animation-delay:0.65s">vishwajit@github</tspan><tspan class="sep t" style="animation-delay:0.65s">:</tspan><tspan class="value t" style="animation-delay:0.65s">~</tspan><tspan class="sep t" style="animation-delay:0.65s">$ </tspan><tspan class="t" fill="#86efac" style="animation-delay:0.65s">fastfetch</tspan></text>
 
 <!-- photo -->
 
@@ -139,7 +139,7 @@ text, tspan {white-space: pre;}
 
 
 
-<!-- neofetch output -->
+<!-- fastfetch output -->
 <text x="390" y="150" fill="#c9d1d9">
 <tspan x="390" y="150" class="t" style="animation-delay:0.90s">vishwajit@github --------------------</tspan>
 <tspan x="390" y="170" class="cc t" style="animation-delay:1.06s">. </tspan><tspan class="key t" style="animation-delay:1.06s">OS</tspan><tspan class="t" style="animation-delay:1.06s">:</tspan><tspan class="cc t" style="animation-delay:1.06s"> ........................ </tspan><tspan class="value t" style="animation-delay:1.06s">Linux Mint / Fedora</tspan>
