@@ -12,6 +12,9 @@ import hashlib
 # Issues and pull requests permissions not needed at the moment, but may be used in the future
 HEADERS = {'authorization': 'token '+ os.environ['ACCESS_TOKEN']}
 USER_NAME = os.environ['USER_NAME'] # 'Andrew6rant'
+MAX_COMMIT_LOC = 10000 # commits changing more lines than this are left out of the LOC stats
+# First line of the cache file. Changing it (e.g. after changing MAX_COMMIT_LOC) forces a full LOC recount.
+CACHE_MARKER = 'LOC cache v2: commits over ' + str(MAX_COMMIT_LOC) + ' changed lines excluded\n'
 QUERY_COUNT = {'user_getter': 0, 'follower_getter': 0, 'graph_repos_stars': 0, 'recursive_loc': 0, 'graph_commits': 0, 'loc_query': 0}
 
 
@@ -258,8 +261,10 @@ def loc_counter_one_repo(owner, repo_name, data, cache_comment, history, additio
             author_user = None
         if author_user == OWNER_ID:
             my_commits += 1
-            addition_total += node['node']['additions']
-            deletion_total += node['node']['deletions']
+            # Huge commits are almost always datasets, venvs or generated files, not hand-written code
+            if node['node']['additions'] + node['node']['deletions'] <= MAX_COMMIT_LOC:
+                addition_total += node['node']['additions']
+                deletion_total += node['node']['deletions']
 
     if history['edges'] == [] or not history['pageInfo']['hasNextPage']:
         return addition_total, deletion_total, my_commits
@@ -326,6 +331,14 @@ def cache_builder(edges, comment_size, force_cache, loc_add=0, loc_del=0):
             for _ in range(comment_size): data.append('This line is a comment block. Write whatever you want here.\n')
         with open(filename, 'w') as f:
             f.writelines(data)
+
+    if comment_size > 0 and data[:1] != [CACHE_MARKER]: # cache was built with different LOC rules: recount everything
+        comment = [CACHE_MARKER] + data[1:comment_size]
+        comment += ['This line is a comment block. Write whatever you want here.\n'] * (comment_size - len(comment))
+        with open(filename, 'w') as f:
+            f.writelines(comment)
+        data = comment
+        force_cache = True
 
     if len(data)-comment_size != len(edges) or force_cache: # If the number of repos has changed, or force_cache is True
         cached = False
@@ -428,9 +441,9 @@ def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib
     if contrib_data is not None: justify_format(root, 'contrib_data', contrib_data)
     if follower_data is not None: justify_format(root, 'follower_data', follower_data, 8)
     if loc_data is not None:
-        if loc_data[2] != '-': justify_format(root, 'loc_data', loc_data[2], 9)
+        if loc_data[2] != '-': justify_format(root, 'loc_data', loc_data[2], 12)
         if loc_data[0] != '-': justify_format(root, 'loc_add', loc_data[0])
-        if loc_data[1] != '-': justify_format(root, 'loc_del', loc_data[1], 7)
+        if loc_data[1] != '-': justify_format(root, 'loc_del', loc_data[1])
     tree.write(filename, encoding='utf-8', xml_declaration=True)
 
 
@@ -442,10 +455,11 @@ def justify_format(root, element_id, new_text, length=0):
         new_text = f"{'{:,}'.format(new_text)}"
     new_text = str(new_text)
     find_and_replace(root, element_id, new_text)
+    if length == 0: # no justification for this element
+        return
     just_len = max(0, length - len(new_text))
     if just_len <= 2:
-        dot_map = {0: '', 1: ' ', 2: '. '}
-        dot_string = dot_map[just_len]
+        dot_string = ' ' # always keep at least one space after the key
     else:
         dot_string = ' ' + ('.' * just_len) + ' '
     find_and_replace(root, f"{element_id}_dots", dot_string)
